@@ -1,16 +1,22 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using Utilities;
 
 public class GameManager : Singleton<GameManager>
 {
+    [SerializeField][Range(1, 5)] private int numberOfHits = 2;
+    
     private MouseObject Axe => GameReferences.Instance.MouseObject;
     
     #region Unity Methods
-    void Start()
+
+    private void Start()
     {
-        
+        Axe.SetHits(numberOfHits);
     }
 
     void Update()
@@ -25,8 +31,8 @@ public class GameManager : Singleton<GameManager>
             if (Axe.HitsLeft == 0)
             {
                 GrowTrees();
-                Axe.SetHits(2);
-                Axe.ResetDestroyedTrees();
+                Axe.SetHits(numberOfHits);
+                Axe.ResetDestroyedTreesAndHits();
             }
         }
 
@@ -35,6 +41,7 @@ public class GameManager : Singleton<GameManager>
             Undo();
         }
     }
+
 
     #endregion
     
@@ -51,7 +58,7 @@ public class GameManager : Singleton<GameManager>
             for (int y = bounds.yMin; y < bounds.yMax; y++)
             {
                 var cellPosition = new Vector3Int(x, y, 0);
-                if (treeTileMap.HasTile(cellPosition))
+                if (treeTileMap.HasTile(cellPosition) && null == treeTileMap.GetInstantiatedObject(cellPosition)?.GetComponent<RockTile>())
                 {
                     currentTrees.Add(cellPosition);
                 }
@@ -64,7 +71,7 @@ public class GameManager : Singleton<GameManager>
             var neighbours = GetNeighbours(tree);
             foreach (var neighbour in neighbours)
             {
-                if (islandTileMap.HasTile(neighbour) && !treeTileMap.HasTile(neighbour) && !Axe.DestroyedTrees.Contains(neighbour))
+                if (islandTileMap.HasTile(neighbour) && !treeTileMap.HasTile(neighbour) && !(Axe.DestroyedTrees.Contains(neighbour) || Axe.DestroyedRocks.Contains(neighbour)))
                 {
                     newTreesPositions.Add(neighbour);
                 }
@@ -80,11 +87,21 @@ public class GameManager : Singleton<GameManager>
 
     private void GrowTree(Vector3Int tree)
     {
-        // TODO --> Add animation
+        Matrix4x4 matrix = Matrix4x4.Scale(Vector3.zero);
+        float scale = 0f;
+        GameReferences.Instance.TreeTileMap.SetTransformMatrix(tree, matrix);
         GameReferences.Instance.TreeTileMap.SetTile(tree, GameReferences.Instance.TreeTile);
-        
-        // Remove Flags
         GameReferences.Instance.TreeTileMap.SetTileFlags(tree, TileFlags.None);
+        
+        DOTween
+            .To(() => scale, x => scale = x, 1f, 1f)
+            .SetEase(Ease.InExpo)
+            .OnUpdate(() =>
+            {
+                matrix = Matrix4x4.Scale(new Vector3(1, scale, 1));
+                GameReferences.Instance.TreeTileMap.SetTransformMatrix(tree, matrix);
+            })
+            .Play();
     }
 
     private List<Vector3Int> GetNeighbours(Vector3Int tree)
@@ -112,6 +129,22 @@ public class GameManager : Singleton<GameManager>
             GrowTree(tree);
         }
 
-        Axe.ResetDestroyedTrees();
+        foreach (var rock in Axe.DestroyedRocks)
+        {
+            var rockTileMap = GameReferences.Instance.TreeTileMap;
+            rockTileMap.SetTile(rock, GameReferences.Instance.RockTile);
+            rockTileMap.SetTileFlags(rock, TileFlags.None);
+            rockTileMap.GetInstantiatedObject(rock).GetComponent<RockTile>().Hit();
+        }
+
+        foreach (var rock in Axe.HitRocks)
+        {
+            var rockTileMap = GameReferences.Instance.TreeTileMap;
+            rockTileMap.SetTile(rock, GameReferences.Instance.RockTile);
+            rockTileMap.SetTileFlags(rock, TileFlags.None);
+            rockTileMap.GetInstantiatedObject(rock).GetComponent<RockTile>().ResetHealth();
+        }
+
+        Axe.ResetDestroyedTreesAndHits();
     }
 }

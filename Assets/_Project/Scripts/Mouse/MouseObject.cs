@@ -26,10 +26,14 @@ public class MouseObject : MonoBehaviour
     private bool _isHitting;
 
     private List<Vector3Int> _destroyedTrees = new();
+    private List<Vector3Int> _hitRocks = new();
+    private List<Vector3Int> _destroyedRocks = new();
     private int _previousHitAmount = 2;
     
     public int HitsLeft => _hitNumber;
     public List<Vector3Int> DestroyedTrees => _destroyedTrees;
+    public List<Vector3Int> HitRocks => _hitRocks;
+    public List<Vector3Int> DestroyedRocks => _destroyedRocks;
     
     public void Start()
     {
@@ -45,8 +49,13 @@ public class MouseObject : MonoBehaviour
         
         if (Input.GetMouseButtonDown(0))
         {
-            if (hitable && CanHit()) Hit();
+            if (hitable && CanHit()) Hit(Input.mousePosition);
             else Debug.Log("Nope!");
+        }
+
+        if (Input.GetMouseButtonDown(1))
+        {
+            Debug.LogError(GameReferences.Instance.TreeTileMap.HasTile(GridHelpers.MousePositionToCell(GameReferences.Instance.TreeTileMap.layoutGrid)) ? "YA UNE TILE" : "YAPU");
         }
     }
 
@@ -56,7 +65,7 @@ public class MouseObject : MonoBehaviour
         var islandTileMap = GameReferences.Instance.IslandTileMap;
         var treeTileMap = GameReferences.Instance.TreeTileMap;
         
-        var cellPosition = GridHelpers.GetCellFromMousePosition(islandTileMap.layoutGrid);
+        var cellPosition = GridHelpers.MousePositionToCell(islandTileMap.layoutGrid);
         
         var isTileValid = islandTileMap.HasTile(cellPosition);
         var isTreeHere = treeTileMap.HasTile(cellPosition);
@@ -67,8 +76,7 @@ public class MouseObject : MonoBehaviour
         selectionTileMap.SetTileFlags(cellPosition, TileFlags.None);
         if (isTreeHere)
         {
-            Debug.Log("Tree here!");
-            selectionTileMap.SetColor(cellPosition, Color.black);
+            selectionTileMap.SetColor(cellPosition, Color.green*.7f);
         }
         else
         {
@@ -90,7 +98,7 @@ public class MouseObject : MonoBehaviour
         number.text = _hitNumber.ToString();
     }
     
-    private void Hit()
+    private void Hit(Vector3 pos)
     {
         if (_isHitting) return;
         _isHitting = true;
@@ -102,7 +110,7 @@ public class MouseObject : MonoBehaviour
         var sequence = DOTween.Sequence();
         sequence.Append(t.DOLocalRotate(originalRotation.eulerAngles + axeRotation, hitDuration/2f).SetEase(Ease.InBounce))
             .Join(t.DOScaleY(originalScale.y * hitScaleFactor, hitDuration/2f).SetEase(Ease.InBounce))
-            .AppendCallback(RemoveTree)
+            .AppendCallback(() => AttackTree(pos))
             .Append(t.DOScaleY(originalScale.y, hitDuration/2f).SetEase(Ease.InBounce))
             .Join(t.DOLocalRotate(originalRotation.eulerAngles, hitDuration/2f).SetEase(Ease.InBounce))
             .AppendCallback(() =>
@@ -115,15 +123,34 @@ public class MouseObject : MonoBehaviour
         sequence.Play();
     }
 
-    private void RemoveTree()
+    private void AttackTree(Vector3 pos)
     {
         var treeTileMap = GameReferences.Instance.TreeTileMap;
-        var cellPosition = GridHelpers.GetCellFromMousePosition(treeTileMap.layoutGrid);
-        var t = treeTileMap.GetTile(cellPosition);
+        var worldPos = Camera.main.ScreenToWorldPoint(pos);
+        var cellPosition = GridHelpers.WorldToCell(worldPos, treeTileMap.layoutGrid);
 
-        Matrix4x4 matrix = Matrix4x4.Scale(Vector3.one);
-
+        var rock = treeTileMap.GetInstantiatedObject(cellPosition);
+        
+        if (rock != null)
+        {
+            // It's a rock ! Manage the rock
+            var rockDestroyed = rock.GetComponent<RockTile>().Hit();
+            _hitRocks.Add(cellPosition);
+            
+            if (rockDestroyed)
+            {
+                rock.GetComponent<RockTile>().DestroyRock(() => treeTileMap.SetTile(cellPosition, null));
+                _destroyedRocks.Add(cellPosition);
+                _hitRocks.Remove(cellPosition);
+            }
+            
+            return;
+        }
+        
+        // It's a tree ! Manage the tree
+        Matrix4x4 matrix;
         float scale = 1f;
+        
         DOTween.To(() => scale, f =>
             {
                 scale = f;
@@ -141,9 +168,12 @@ public class MouseObject : MonoBehaviour
         _destroyedTrees.Add(cellPosition);
     }
     
-    public void ResetDestroyedTrees()
+    public void ResetDestroyedTreesAndHits()
     {
         _destroyedTrees.Clear();
+        _destroyedRocks.Clear();
+        _hitRocks.Clear();
         SetHits(_previousHitAmount);
     }
+
 }

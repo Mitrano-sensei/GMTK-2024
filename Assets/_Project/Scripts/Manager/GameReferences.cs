@@ -16,6 +16,12 @@ public class GameReferences : Singleton<GameReferences>
     [SerializeField] private TileBase selectionTile;
     [SerializeField] private TileBase treeTile;
     [SerializeField] private TileBase flowerTile;
+    [SerializeField] private RuleTile rockTile;
+
+    [Header("Sprites")] 
+    [SerializeField] private Sprite rockSprite;
+    [SerializeField] private Sprite destroyedRockSprite;
+    
     
     [Header("Misc")]
     [SerializeField] private MouseObject mouseObject;
@@ -29,6 +35,10 @@ public class GameReferences : Singleton<GameReferences>
     public TileBase SelectionTile => selectionTile;
     public TileBase TreeTile => treeTile;
     public TileBase FlowerTile => flowerTile;
+    public RuleTile RockTile => rockTile;
+    
+    public Sprite RockSprite => rockSprite;
+    public Sprite DestroyedRockSprite => destroyedRockSprite;
     
     public MouseObject MouseObject => mouseObject;
     
@@ -42,7 +52,11 @@ public class GameReferences : Singleton<GameReferences>
         if (selectionTile == null) Debug.LogError("Selection Tile is not set!");
         if (treeTile == null) Debug.LogError("Tree Tile is not set!");
         if (flowerTile == null) Debug.LogError("Flower Tile is not set!");
+        if (rockTile == null) Debug.LogError("Rock Tile is not set!");
         
         if (mouseObject == null) Debug.LogError("Mouse Object is not set!");
+        
+        if (rockSprite == null) Debug.LogError("Rock Sprite is not set!");
+        if (destroyedRockSprite == null) Debug.LogError("Destroyed Rock Sprite is not set!");
     }
 }
