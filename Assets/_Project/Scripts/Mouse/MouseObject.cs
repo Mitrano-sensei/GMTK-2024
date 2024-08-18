@@ -34,6 +34,7 @@ public class MouseObject : MonoBehaviour
     public List<Vector3Int> DestroyedTrees => _destroyedTrees;
     public List<Vector3Int> HitRocks => _hitRocks;
     public List<Vector3Int> DestroyedRocks => _destroyedRocks;
+    public bool FreezeAxe = true;
     
     public void Start()
     {
@@ -88,7 +89,7 @@ public class MouseObject : MonoBehaviour
 
     private bool CanHit()
     {
-        return HitsLeft > 0;
+        return HitsLeft > 0 && !FreezeAxe;
     }
 
     public void SetHits(int hitNumber)

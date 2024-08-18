@@ -9,6 +9,7 @@ using Utilities;
 public class GameManager : Singleton<GameManager>
 {
     [SerializeField][Range(1, 5)] private int numberOfHits = 2;
+    [SerializeField] private TransitionScreen transitionScreen;
     
     private MouseObject Axe => GameReferences.Instance.MouseObject;
     
@@ -16,7 +17,9 @@ public class GameManager : Singleton<GameManager>
 
     private void Start()
     {
+        Instantiate(transitionScreen);
         Axe.SetHits(numberOfHits);
+        StartCoroutine(CoroutineHelpers.AfterDelay(3f, () => Axe.FreezeAxe = false));
     }
 
     void Update()
